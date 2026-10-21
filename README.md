@@ -12,7 +12,7 @@ e teste os fluxos no seu computador antes de colocar usuários reais. Não há p
 ## Começar no Windows
 
 Instale .NET 8 SDK, SQL Server Express e (opcional) Visual Studio. Abra um terminal
-na pasta `SalaGest.Backend/` e execute:
+na pasta `Backend/` e execute:
 
 ```powershell
 dotnet --version

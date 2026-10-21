@@ -38,16 +38,23 @@ public static partial class ApiEndpoints
 
             var booking = new BookingRequest
             {
-                TeacherId = UserId(current), ClassGroupId = input.ClassGroupId,
-                StartsAt = input.StartsAt, EndsAt = input.EndsAt,
-                Recurrence = input.Recurrence, RepeatUntil = input.RepeatUntil,
-                WeekdaysMask = input.WeekdaysMask, StudentsPerComputer = input.StudentsPerComputer,
+                TeacherId = UserId(current),
+                ClassGroupId = input.ClassGroupId,
+                StartsAt = input.StartsAt,
+                EndsAt = input.EndsAt,
+                Recurrence = input.Recurrence,
+                RepeatUntil = input.RepeatUntil,
+                WeekdaysMask = input.WeekdaysMask,
+                StudentsPerComputer = input.StudentsPerComputer,
                 RecurringEadWeekday = input.RecurringEadWeekday,
-                Students = input.Students, NeedsProjector = input.NeedsProjector,
+                Students = input.Students,
+                NeedsProjector = input.NeedsProjector,
                 NeedsTeacherComputer = input.NeedsTeacherComputer,
                 NeedsStudentComputers = input.NeedsStudentComputers,
-                MinTier = input.MinTier, MinRamGb = input.MinRamGb,
-                NeedsDedicatedGpu = input.NeedsDedicatedGpu, Reason = input.Reason.Trim(),
+                MinTier = input.MinTier,
+                MinRamGb = input.MinRamGb,
+                NeedsDedicatedGpu = input.NeedsDedicatedGpu,
+                Reason = input.Reason.Trim(),
                 LessonPlanLink = input.LessonPlanLink,
                 Software = input.SoftwareIds.Distinct().Select(id => new BookingSoftware { SoftwareId = id }).ToList()
             };
@@ -55,7 +62,9 @@ public static partial class ApiEndpoints
             await db.SaveChangesAsync();
             return Results.Created($"/api/bookings/{booking.Id}", new
             {
-                booking.Id, booking.Status, Occurrences = BookingPeriods.Expand(booking).Count,
+                booking.Id,
+                booking.Status,
+                Occurrences = BookingPeriods.Expand(booking).Count,
                 NextStep = $"GET /api/bookings/{booking.Id}/suggestions"
             });
         });
@@ -69,11 +78,27 @@ public static partial class ApiEndpoints
                 .OrderByDescending(b => b.Id).ToListAsync();
             return Results.Ok(bookings.Select(b => new
             {
-                b.Id, b.TeacherId, b.ClassGroupId, b.StartsAt, b.EndsAt,
-                b.Recurrence, b.RepeatUntil, b.WeekdaysMask, b.StudentsPerComputer, b.RecurringEadWeekday,
-                b.Students, b.NeedsProjector, b.NeedsTeacherComputer, b.NeedsStudentComputers,
-                b.MinTier, b.MinRamGb, b.NeedsDedicatedGpu, b.Status, b.Reason,
-                b.LessonPlanLink, b.ApprovedRoomId,
+                b.Id,
+                b.TeacherId,
+                b.ClassGroupId,
+                b.StartsAt,
+                b.EndsAt,
+                b.Recurrence,
+                b.RepeatUntil,
+                b.WeekdaysMask,
+                b.StudentsPerComputer,
+                b.RecurringEadWeekday,
+                b.Students,
+                b.NeedsProjector,
+                b.NeedsTeacherComputer,
+                b.NeedsStudentComputers,
+                b.MinTier,
+                b.MinRamGb,
+                b.NeedsDedicatedGpu,
+                b.Status,
+                b.Reason,
+                b.LessonPlanLink,
+                b.ApprovedRoomId,
                 SoftwareIds = b.Software.Select(s => s.SoftwareId)
             }));
         });
@@ -104,24 +129,42 @@ public static partial class ApiEndpoints
                     periods.Any(p => ScheduleGenerator.Overlap(o.StartsAt, o.EndsAt, p.Start, p.End)))
                     .OrderBy(o => o.StartsAt).Select(o => new
                     {
-                        o.Id, o.StartsAt, o.EndsAt, o.ClassGroupId,
+                        o.Id,
+                        o.StartsAt,
+                        o.EndsAt,
+                        o.ClassGroupId,
                         TeacherId = activeLoans.FirstOrDefault(l => l.RoomOccupationId == o.Id)?.BorrowerId ?? o.TeacherId
                     }).ToArray();
                 return new
                 {
-                    room.Id, room.Name, room.Location, room.Purpose, room.Kind, room.Seats, room.Desks,
-                    room.HasProjector, room.HasTeacherComputer, room.HasInternet, room.Active,
+                    room.Id,
+                    room.Name,
+                    room.Location,
+                    room.Purpose,
+                    room.Kind,
+                    room.Seats,
+                    room.Desks,
+                    room.HasProjector,
+                    room.HasTeacherComputer,
+                    room.HasInternet,
+                    room.Active,
                     Computers = room.ComputerGroups.Sum(g => g.Quantity),
                     ComputerGroups = room.ComputerGroups.Select(g => new
                     {
-                        g.Quantity, g.RamGb, g.Tier, g.DedicatedGpu,
+                        g.Quantity,
+                        g.RamGb,
+                        g.Tier,
+                        g.DedicatedGpu,
                         Software = g.Software.Select(s => new { s.SoftwareId, s.Software.Name, s.InstalledQuantity })
                     }),
-                    Compatible = mismatch is null, Incompatibility = mismatch,
-                    Available = conflicts.Length == 0, Conflicts = conflicts,
+                    Compatible = mismatch is null,
+                    Incompatibility = mismatch,
+                    Available = conflicts.Length == 0,
+                    Conflicts = conflicts,
                     AvailableOccurrences = periods.Count(p => !occupations.Any(o => o.RoomId == room.Id &&
                         ScheduleGenerator.Overlap(o.StartsAt, o.EndsAt, p.Start, p.End))),
-                    TotalOccurrences = periods.Count, Score = RoomCompatibility.Score(room, need)
+                    TotalOccurrences = periods.Count,
+                    Score = RoomCompatibility.Score(room, need)
                 };
             }).OrderByDescending(x => x.Compatible)
                 .ThenByDescending(x => x.Compatible ? x.Score : x.Seats >= booking.Students ? 1 : 0)
@@ -147,12 +190,25 @@ public static partial class ApiEndpoints
                 var blockers = occ.Where(o => ScheduleGenerator.Overlap(o.StartsAt, o.EndsAt, p.Start, p.End)
                     && (o.RoomId == roomId || o.TeacherId == booking.TeacherId ||
                         (booking.ClassGroupId.HasValue && o.ClassGroupId == booking.ClassGroupId)))
-                    .Select(o => new { o.Id, o.RoomId, o.TeacherId, o.ClassGroupId,
-                        o.StartsAt, o.EndsAt }).ToList();
+                    .Select(o => new
+                    {
+                        o.Id,
+                        o.RoomId,
+                        o.TeacherId,
+                        o.ClassGroupId,
+                        o.StartsAt,
+                        o.EndsAt
+                    }).ToList();
                 return new { p.Start, p.End, Available = blockers.Count == 0, Conflicts = blockers };
             }).ToList();
-            return Results.Ok(new { RoomId = roomId, Total = result.Count,
-                Available = result.Count(x => x.Available), Unavailable = result.Count(x => !x.Available), Days = result });
+            return Results.Ok(new
+            {
+                RoomId = roomId,
+                Total = result.Count,
+                Available = result.Count(x => x.Available),
+                Unavailable = result.Count(x => !x.Available),
+                Days = result
+            });
         });
 
         // O próprio professor confirma. Uma série parcialmente disponível exige confirmação EXPLÍCITA.
@@ -196,8 +252,10 @@ public static partial class ApiEndpoints
                         original.ChangedById = UserId(current);
                         db.OccupationChanges.Add(new OccupationChange
                         {
-                            RoomOccupationId = original.Id, ChangedById = UserId(current),
-                            Action = "Substituida", Details = $"Nova solicitação #{booking.Id} na sala {room.Id}"
+                            RoomOccupationId = original.Id,
+                            ChangedById = UserId(current),
+                            Action = "Substituida",
+                            Details = $"Nova solicitação #{booking.Id} na sala {room.Id}"
                         });
                         replaced.Add(original.Id);
                         // A próxima iteração vê a data já substituída dentro da mesma transação.
@@ -207,14 +265,22 @@ public static partial class ApiEndpoints
                 else unavailable.Add(new { period.Start, period.End, Reason = conflict });
             }
             if (unavailable.Count > 0 && !input.ConfirmPartial)
-                return Results.Conflict(new { Error = "Existem datas indisponíveis. Confirme a reserva parcial.",
-                    AvailableDates = free.Select(p => p.Start).ToArray(), UnavailableDates = unavailable });
+                return Results.Conflict(new
+                {
+                    Error = "Existem datas indisponíveis. Confirme a reserva parcial.",
+                    AvailableDates = free.Select(p => p.Start).ToArray(),
+                    UnavailableDates = unavailable
+                });
             if (free.Count == 0) return Results.Conflict(new ApiError("Não há datas disponíveis para essa sala"));
             db.Occupations.AddRange(free.Select(period => new RoomOccupation
             {
-                RoomId = room.Id, StartsAt = period.Start, EndsAt = period.End,
-                Kind = OccupationKind.Avulsa, TeacherId = booking.TeacherId,
-                ClassGroupId = booking.ClassGroupId, BookingRequestId = booking.Id,
+                RoomId = room.Id,
+                StartsAt = period.Start,
+                EndsAt = period.End,
+                Kind = OccupationKind.Avulsa,
+                TeacherId = booking.TeacherId,
+                ClassGroupId = booking.ClassGroupId,
+                BookingRequestId = booking.Id,
                 DayStatus = booking.RecurringEadWeekday == (int)period.Start.DayOfWeek
                     ? ClassDayStatus.Ead : ClassDayStatus.Letivo,
                 Description = booking.Reason
@@ -223,8 +289,15 @@ public static partial class ApiEndpoints
             booking.ApprovedRoomId = room.Id;
             await db.SaveChangesAsync();
             await tx.CommitAsync();
-            return Results.Ok(new { booking.Id, booking.Status, booking.ApprovedRoomId,
-                ReservedCount = free.Count, ReplacedOccupationIds = replaced, UnavailableDates = unavailable });
+            return Results.Ok(new
+            {
+                booking.Id,
+                booking.Status,
+                booking.ApprovedRoomId,
+                ReservedCount = free.Count,
+                ReplacedOccupationIds = replaced,
+                UnavailableDates = unavailable
+            });
         });
 
         // Compatibilidade com clientes antigos: endpoint administrativo continua disponível,

@@ -15,8 +15,15 @@ public static partial class ApiEndpoints
         api.MapGet("/schedules", async (int? semesterId, AppDbContext db) =>
             Results.Ok(await db.Schedules.Where(s => semesterId == null || s.SemesterId == semesterId)
                 .OrderByDescending(s => s.CreatedAtUtc)
-                .Select(s => new { s.Id, s.SemesterId, s.Status, s.UnallocatedMeetings,
-                    s.CreatedAtUtc, AllocatedMeetings = s.WeeklyClasses.Count }).ToListAsync()));
+                .Select(s => new
+                {
+                    s.Id,
+                    s.SemesterId,
+                    s.Status,
+                    s.UnallocatedMeetings,
+                    s.CreatedAtUtc,
+                    AllocatedMeetings = s.WeeklyClasses.Count
+                }).ToListAsync()));
 
         api.MapGet("/schedules/{id:int}", async (int id, AppDbContext db) =>
         {
@@ -27,14 +34,24 @@ public static partial class ApiEndpoints
             if (schedule is null) return Results.NotFound();
             return Results.Ok(new
             {
-                schedule.Id, schedule.SemesterId, schedule.Status,
-                schedule.UnallocatedMeetings, schedule.CreatedAtUtc,
+                schedule.Id,
+                schedule.SemesterId,
+                schedule.Status,
+                schedule.UnallocatedMeetings,
+                schedule.CreatedAtUtc,
                 Lessons = schedule.WeeklyClasses.Select(w => new
                 {
-                    w.Id, w.Weekday, w.ShiftId, ShiftName = w.Shift.Name,
-                    Start = w.Shift.StartsAt, End = w.Shift.EndsAt,
-                    w.RoomId, Room = w.Room.Name, w.AssignmentId,
-                    w.Assignment.TeacherId, w.Assignment.ClassGroupId,
+                    w.Id,
+                    w.Weekday,
+                    w.ShiftId,
+                    ShiftName = w.Shift.Name,
+                    Start = w.Shift.StartsAt,
+                    End = w.Shift.EndsAt,
+                    w.RoomId,
+                    Room = w.Room.Name,
+                    w.AssignmentId,
+                    w.Assignment.TeacherId,
+                    w.Assignment.ClassGroupId,
                     w.Assignment.DisciplineName
                 })
             });
@@ -48,9 +65,14 @@ public static partial class ApiEndpoints
                 return Results.Conflict(new ApiError("Já há grade publicada nesse semestre. A versão inicial não substitui grades publicadas."));
             var (schedule, error) = await generator.GenerateAsync(semesterId);
             return schedule is null ? Error(error ?? "Não foi possível gerar a grade") :
-                Results.Ok(new { schedule.Id, schedule.Status, schedule.UnallocatedMeetings,
+                Results.Ok(new
+                {
+                    schedule.Id,
+                    schedule.Status,
+                    schedule.UnallocatedMeetings,
                     AllocatedMeetings = schedule.WeeklyClasses.Count,
-                    Note = schedule.UnallocatedMeetings > 0 ? "Grade parcial: ajuste os cadastros e gere novamente" : "Grade pronta para revisão" });
+                    Note = schedule.UnallocatedMeetings > 0 ? "Grade parcial: ajuste os cadastros e gere novamente" : "Grade pronta para revisão"
+                });
         }).RequireAuthorization("Admin");
 
         api.MapPost("/schedules/{id:int}/publish", async (int id, AppDbContext db) =>
@@ -84,8 +106,10 @@ public static partial class ApiEndpoints
                         return Results.Conflict(new ApiError("A própria grade possui horários conflitantes"));
                     pendingOccupations.Add(new RoomOccupation
                     {
-                        WeeklyClassId = weekly.Id, RoomId = weekly.RoomId,
-                        StartsAt = period.Start, EndsAt = period.End,
+                        WeeklyClassId = weekly.Id,
+                        RoomId = weekly.RoomId,
+                        StartsAt = period.Start,
+                        EndsAt = period.End,
                         TeacherId = weekly.Assignment.TeacherId,
                         ClassGroupId = weekly.Assignment.ClassGroupId,
                         Kind = OccupationKind.Aula,
@@ -97,8 +121,12 @@ public static partial class ApiEndpoints
             schedule.Status = ScheduleStatus.Publicada;
             await db.SaveChangesAsync();
             await tx.CommitAsync();
-            return Results.Ok(new { schedule.Id, schedule.Status,
-                OccupationsCreated = pendingOccupations.Count });
+            return Results.Ok(new
+            {
+                schedule.Id,
+                schedule.Status,
+                OccupationsCreated = pendingOccupations.Count
+            });
         }).RequireAuthorization("Admin");
 
         api.MapGet("/agenda", async (DateTime from, DateTime to, int? roomId, AppDbContext db) =>
@@ -114,14 +142,21 @@ public static partial class ApiEndpoints
                 && ids.Contains(l.RoomOccupationId)).ToListAsync();
             return Results.Ok(occupations.Select(o => new
             {
-                o.Id, o.RoomId, o.StartsAt, o.EndsAt, o.Kind, o.DayStatus, o.Description,
+                o.Id,
+                o.RoomId,
+                o.StartsAt,
+                o.EndsAt,
+                o.Kind,
+                o.DayStatus,
+                o.Description,
                 OriginalTeacherId = o.TeacherId,
                 ActualTeacherId = loans.FirstOrDefault(l => l.RoomOccupationId == o.Id)?.BorrowerId ?? o.TeacherId,
                 IsBorrowed = loans.Any(l => l.RoomOccupationId == o.Id),
                 OriginalClassGroupId = o.ClassGroupId,
                 ActualClassGroupId = loans.Any(l => l.RoomOccupationId == o.Id)
                     ? loans.First(l => l.RoomOccupationId == o.Id).BookingRequest.ClassGroupId : o.ClassGroupId,
-                o.WeeklyClassId, o.BookingRequestId,
+                o.WeeklyClassId,
+                o.BookingRequestId,
                 LoanId = loans.FirstOrDefault(l => l.RoomOccupationId == o.Id)?.Id,
                 LoanDisposition = loans.FirstOrDefault(l => l.RoomOccupationId == o.Id)?.OwnerDisposition
             }));
@@ -138,8 +173,11 @@ public static partial class ApiEndpoints
             if (conflict is not null) return Results.Conflict(new ApiError(conflict));
             var occupation = new RoomOccupation
             {
-                RoomId = input.RoomId, StartsAt = input.StartsAt, EndsAt = input.EndsAt,
-                Kind = OccupationKind.Bloqueio, Description = input.Description
+                RoomId = input.RoomId,
+                StartsAt = input.StartsAt,
+                EndsAt = input.EndsAt,
+                Kind = OccupationKind.Bloqueio,
+                Description = input.Description
             };
             db.Occupations.Add(occupation);
             await db.SaveChangesAsync(); await tx.CommitAsync();

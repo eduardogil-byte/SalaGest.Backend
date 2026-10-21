@@ -40,8 +40,10 @@ public static partial class ApiEndpoints
             occ.ChangedById = UserId(current);
             db.OccupationChanges.Add(new OccupationChange
             {
-                RoomOccupationId = id, ChangedById = UserId(current),
-                Action = "DiaLetivo", Details = $"{old} -> {input.Status}"
+                RoomOccupationId = id,
+                ChangedById = UserId(current),
+                Action = "DiaLetivo",
+                Details = $"{old} -> {input.Status}"
             });
             await db.SaveChangesAsync();
             return Results.Ok(new { occ.Id, occ.DayStatus, RoomRemainsReserved = true });
@@ -70,8 +72,10 @@ public static partial class ApiEndpoints
                 occ.ChangedById = UserId(current);
                 db.OccupationChanges.Add(new OccupationChange
                 {
-                    RoomOccupationId = occ.Id, ChangedById = UserId(current),
-                    Action = "Liberada", Details = $"Sala {occ.RoomId}, {occ.StartsAt:dd/MM/yyyy HH:mm}"
+                    RoomOccupationId = occ.Id,
+                    ChangedById = UserId(current),
+                    Action = "Liberada",
+                    Details = $"Sala {occ.RoomId}, {occ.StartsAt:dd/MM/yyyy HH:mm}"
                 });
             }
             await db.SaveChangesAsync();
@@ -94,8 +98,10 @@ public static partial class ApiEndpoints
             occ.ChangedById = UserId(current);
             db.OccupationChanges.Add(new OccupationChange
             {
-                RoomOccupationId = id, ChangedById = UserId(current),
-                Action = "Liberada", Details = $"Sala {occ.RoomId}, {occ.StartsAt:dd/MM/yyyy HH:mm}"
+                RoomOccupationId = id,
+                ChangedById = UserId(current),
+                Action = "Liberada",
+                Details = $"Sala {occ.RoomId}, {occ.StartsAt:dd/MM/yyyy HH:mm}"
             });
             await db.SaveChangesAsync();
             await tx.CommitAsync();
@@ -139,11 +145,21 @@ public static partial class ApiEndpoints
                 var mismatch = RoomCompatibility.Incompatibility(room, need);
                 var occupiedBy = overlapping.Where(o => o.RoomId == room.Id)
                     .Select(o => new { o.Id, o.TeacherId, o.ClassGroupId }).ToList();
-                return new { room.Id, room.Name, room.Location, room.Purpose, room.Kind,
-                    room.Seats, Computers = room.ComputerGroups.Sum(g => g.Quantity),
-                    Compatible = mismatch is null, Incompatibility = mismatch,
-                    Available = occupiedBy.Count == 0, OccupiedBy = occupiedBy,
-                    Score = RoomCompatibility.Score(room, need) };
+                return new
+                {
+                    room.Id,
+                    room.Name,
+                    room.Location,
+                    room.Purpose,
+                    room.Kind,
+                    room.Seats,
+                    Computers = room.ComputerGroups.Sum(g => g.Quantity),
+                    Compatible = mismatch is null,
+                    Incompatibility = mismatch,
+                    Available = occupiedBy.Count == 0,
+                    OccupiedBy = occupiedBy,
+                    Score = RoomCompatibility.Score(room, need)
+                };
             }).OrderByDescending(x => x.Compatible)
               .ThenByDescending(x => x.Score)
               .ThenByDescending(x => x.Available).ToList());
@@ -195,13 +211,16 @@ public static partial class ApiEndpoints
             occ.ChangedById = UserId(current);
             db.OccupationChanges.Add(new OccupationChange
             {
-                RoomOccupationId = id, ChangedById = UserId(current),
-                Action = "Transferida", Details = $"Sala {oldRoomId} -> sala {room.Id}"
+                RoomOccupationId = id,
+                ChangedById = UserId(current),
+                Action = "Transferida",
+                Details = $"Sala {oldRoomId} -> sala {room.Id}"
             });
             if (input.NotifyTeachers && occ.TeacherId != UserId(current) && occ.TeacherId is not null)
                 db.Notifications.Add(new UserNotification
                 {
-                    UserId = occ.TeacherId, ActorId = UserId(current),
+                    UserId = occ.TeacherId,
+                    ActorId = UserId(current),
                     Message = $"Sua aula em {occ.StartsAt:dd/MM/yyyy HH:mm} foi transferida da sala {oldRoomId} para {room.Name}."
                 });
             await db.SaveChangesAsync();
@@ -218,9 +237,24 @@ public static partial class ApiEndpoints
             var actorIds = items.Select(n => n.ActorId).Distinct().ToArray();
             var names = await db.Users.AsNoTracking().Where(u => actorIds.Contains(u.Id))
                 .Select(u => new { u.Id, u.DisplayName }).ToDictionaryAsync(u => u.Id, u => u.DisplayName);
-            return Results.Ok(items.Select(n => new { n.Id, n.UserId, n.ActorId,
+            return Results.Ok(items.Select(n => new
+            {
+                n.Id,
+                n.UserId,
+                n.ActorId,
                 ActorName = names.GetValueOrDefault(n.ActorId, "Usuário"),
-                n.Message, n.CreatedAtUtc, n.ReadAtUtc }));
+                n.Message,
+                n.CreatedAtUtc,
+                n.ReadAtUtc
+            }));
+        });
+        notifications.MapGet("/unread-count", async (ClaimsPrincipal current, AppDbContext db) =>
+            Results.Ok(new { count = await db.Notifications.CountAsync(n => n.UserId == UserId(current) && n.ReadAtUtc == null) }));
+        notifications.MapPost("/read-all", async (ClaimsPrincipal current, AppDbContext db) =>
+        {
+            await db.Notifications.Where(n => n.UserId == UserId(current) && n.ReadAtUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadAtUtc, (DateTime?)DateTime.UtcNow));
+            return Results.NoContent();
         });
         notifications.MapPost("/{id:int}/read", async (int id, ClaimsPrincipal current, AppDbContext db) =>
         {
@@ -259,18 +293,32 @@ public static partial class ApiEndpoints
             var dailyCounts = visible.GroupBy(o => DateOnly.FromDateTime(o.StartsAt))
                 .ToDictionary(g => g.Key, g => g.Select(o => o.RoomId).Distinct().Count());
             var days = Enumerable.Range(0, to.DayNumber - from.DayNumber + 1)
-                .Select(n => { var day = from.AddDays(n);
-                    return new { Date = day, OccupiedRooms = dailyCounts.GetValueOrDefault(day) }; })
+                .Select(n =>
+                {
+                    var day = from.AddDays(n);
+                    return new { Date = day, OccupiedRooms = dailyCounts.GetValueOrDefault(day) };
+                })
                 .ToList();
             var roomIds = await db.Rooms.AsNoTracking().Select(r => r.Id).ToListAsync();
             var byRoom = roomIds.Select(roomId =>
             {
                 var uses = visible.Where(o => o.RoomId == roomId).ToList();
-                return new { RoomId = roomId, Occurrences = uses.Count,
-                    Hours = uses.Sum(o => (o.EndsAt - o.StartsAt).TotalHours) };
+                return new
+                {
+                    RoomId = roomId,
+                    Occurrences = uses.Count,
+                    Hours = uses.Sum(o => (o.EndsAt - o.StartsAt).TotalHours)
+                };
             }).OrderByDescending(r => r.Hours).ToList();
-            return Results.Ok(new { From = from, To = to, ShiftId = shiftId,
-                ClassGroupId = classGroupId, Days = days, Rooms = byRoom });
+            return Results.Ok(new
+            {
+                From = from,
+                To = to,
+                ShiftId = shiftId,
+                ClassGroupId = classGroupId,
+                Days = days,
+                Rooms = byRoom
+            });
         }).RequireAuthorization();
     }
 }

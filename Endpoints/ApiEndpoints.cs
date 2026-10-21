@@ -41,11 +41,25 @@ public static partial class ApiEndpoints
 
     private static object RoomView(Room r) => new
     {
-        r.Id, r.Name, r.Location, r.Purpose, r.Kind, r.Seats, r.Desks,
-        r.HasProjector, r.HasTeacherComputer, r.HasInternet, r.Active,
+        r.Id,
+        r.Name,
+        r.Location,
+        r.Purpose,
+        r.Kind,
+        r.Seats,
+        r.Desks,
+        r.HasProjector,
+        r.HasTeacherComputer,
+        r.HasInternet,
+        r.Active,
         ComputerGroups = r.ComputerGroups.Select(g => new
         {
-            g.Id, g.Description, g.Quantity, g.RamGb, g.Tier, g.DedicatedGpu,
+            g.Id,
+            g.Description,
+            g.Quantity,
+            g.RamGb,
+            g.Tier,
+            g.DedicatedGpu,
             Software = g.Software.Select(s => new { s.SoftwareId, Name = s.Software.Name, s.InstalledQuantity })
         })
     };
@@ -74,7 +88,9 @@ public static partial class ApiEndpoints
             signIn.AuthenticationScheme = IdentityConstants.BearerScheme;
             var result = await signIn.PasswordSignInAsync(input.Email, input.Password,
                 isPersistent: false, lockoutOnFailure: true);
-            return result.Succeeded ? Results.Empty : Results.Unauthorized();
+            if (result.IsLockedOut)
+                return Results.Json(new ApiError("Muitas tentativas incorretas. Aguarde até 1 minuto e tente novamente."), statusCode: 429);
+            return result.Succeeded ? Results.Empty : Results.Json(new ApiError("E-mail ou senha incorretos."), statusCode: 401);
         }).AllowAnonymous();
 
         app.MapGet("/api/me", async (ClaimsPrincipal current, UserManager<AppUser> manager) =>
@@ -82,7 +98,9 @@ public static partial class ApiEndpoints
             var user = await manager.FindByIdAsync(UserId(current));
             return user is null ? Results.Unauthorized() : Results.Ok(new
             {
-                user.Id, user.Email, user.DisplayName,
+                user.Id,
+                user.Email,
+                user.DisplayName,
                 Roles = await manager.GetRolesAsync(user)
             });
         }).RequireAuthorization().WithTags("Autenticação");
@@ -104,7 +122,7 @@ public static partial class ApiEndpoints
                 input.StartsAt >= input.EndsAt)
                 return Error("Nome ou horários do turno inválidos");
             var item = new SchoolShift
-                { Name = input.Name.Trim(), StartsAt = input.StartsAt, EndsAt = input.EndsAt };
+            { Name = input.Name.Trim(), StartsAt = input.StartsAt, EndsAt = input.EndsAt };
             db.Shifts.Add(item); await db.SaveChangesAsync();
             return Results.Created($"/api/shifts/{item.Id}", item);
         }).RequireAuthorization("Admin");
@@ -190,8 +208,12 @@ public static partial class ApiEndpoints
             if (input.Students < 1 || input.Students > 500 || string.IsNullOrWhiteSpace(input.Name))
                 return Error("Turma deve ter nome e quantidade de alunos válida");
             if (!await db.Semesters.AnyAsync(s => s.Id == input.SemesterId)) return Error("Semestre não encontrado");
-            var item = new ClassGroup { SemesterId = input.SemesterId,
-                Name = input.Name.Trim(), Students = input.Students };
+            var item = new ClassGroup
+            {
+                SemesterId = input.SemesterId,
+                Name = input.Name.Trim(),
+                Students = input.Students
+            };
             db.Classes.Add(item); await db.SaveChangesAsync();
             return Results.Created($"/api/classes/{item.Id}", item);
         }).RequireAuthorization("Admin");
@@ -212,7 +234,7 @@ public static partial class ApiEndpoints
             db.Availabilities.RemoveRange(await db.Availabilities
                 .Where(a => a.TeacherId == teacherId).ToListAsync());
             db.Availabilities.AddRange(input.Select(a => new TeacherAvailability
-                { TeacherId = teacherId, Weekday = a.Weekday, ShiftId = a.ShiftId }));
+            { TeacherId = teacherId, Weekday = a.Weekday, ShiftId = a.ShiftId }));
             await db.SaveChangesAsync();
             return Results.NoContent();
         });
@@ -223,9 +245,19 @@ public static partial class ApiEndpoints
                 .Where(a => semesterId == null || a.ClassGroup.SemesterId == semesterId).ToListAsync();
             return Results.Ok(items.Select(a => new
             {
-                a.Id, a.TeacherId, a.ClassGroupId, a.DisciplineName,
-                a.MeetingsPerWeek, a.PreferredShiftId, a.NeedsProjector, a.NeedsTeacherComputer,
-                a.NeedsStudentComputers, a.MinTier, a.MinRamGb, a.NeedsDedicatedGpu, a.LessonPlanLink,
+                a.Id,
+                a.TeacherId,
+                a.ClassGroupId,
+                a.DisciplineName,
+                a.MeetingsPerWeek,
+                a.PreferredShiftId,
+                a.NeedsProjector,
+                a.NeedsTeacherComputer,
+                a.NeedsStudentComputers,
+                a.MinTier,
+                a.MinRamGb,
+                a.NeedsDedicatedGpu,
+                a.LessonPlanLink,
                 SoftwareIds = a.Software.Select(s => s.SoftwareId)
             }));
         });
@@ -244,12 +276,17 @@ public static partial class ApiEndpoints
                 return Error("Dados da atribuição inválidos");
             var item = new TeachingAssignment
             {
-                ClassGroupId = input.ClassGroupId, TeacherId = input.TeacherId,
-                DisciplineName = input.DisciplineName.Trim(), MeetingsPerWeek = input.MeetingsPerWeek,
-                PreferredShiftId = input.PreferredShiftId, NeedsProjector = input.NeedsProjector,
+                ClassGroupId = input.ClassGroupId,
+                TeacherId = input.TeacherId,
+                DisciplineName = input.DisciplineName.Trim(),
+                MeetingsPerWeek = input.MeetingsPerWeek,
+                PreferredShiftId = input.PreferredShiftId,
+                NeedsProjector = input.NeedsProjector,
                 NeedsTeacherComputer = input.NeedsTeacherComputer,
-                NeedsStudentComputers = input.NeedsStudentComputers, MinTier = input.MinTier,
-                MinRamGb = input.MinRamGb, NeedsDedicatedGpu = input.NeedsDedicatedGpu,
+                NeedsStudentComputers = input.NeedsStudentComputers,
+                MinTier = input.MinTier,
+                MinRamGb = input.MinRamGb,
+                NeedsDedicatedGpu = input.NeedsDedicatedGpu,
                 LessonPlanLink = input.LessonPlanLink,
                 Software = input.SoftwareIds.Distinct().Select(id => new AssignmentSoftware { SoftwareId = id }).ToList()
             };
@@ -278,18 +315,28 @@ public static partial class ApiEndpoints
 
     private static Room CreateRoom(RoomInput input) => new()
     {
-        Name = input.Name.Trim(), Location = input.Location.Trim(), Purpose = input.Purpose?.Trim() ?? "", Kind = input.Kind,
-        Seats = input.Seats, Desks = input.Desks, HasProjector = input.HasProjector,
-        HasTeacherComputer = input.HasTeacherComputer, HasInternet = input.HasInternet,
-        Active = input.Active, ComputerGroups = NewComputerGroups(input.ComputerGroups)
+        Name = input.Name.Trim(),
+        Location = input.Location.Trim(),
+        Purpose = input.Purpose?.Trim() ?? "",
+        Kind = input.Kind,
+        Seats = input.Seats,
+        Desks = input.Desks,
+        HasProjector = input.HasProjector,
+        HasTeacherComputer = input.HasTeacherComputer,
+        HasInternet = input.HasInternet,
+        Active = input.Active,
+        ComputerGroups = NewComputerGroups(input.ComputerGroups)
     };
 
     private static List<ComputerGroup> NewComputerGroups(IEnumerable<ComputerGroupInput> groups)
         => groups.Select(g => new ComputerGroup
         {
-            Description = g.Description, Quantity = g.Quantity, RamGb = g.RamGb,
-            Tier = g.Tier, DedicatedGpu = g.DedicatedGpu,
+            Description = g.Description,
+            Quantity = g.Quantity,
+            RamGb = g.RamGb,
+            Tier = g.Tier,
+            DedicatedGpu = g.DedicatedGpu,
             Software = g.Software.Select(s => new GroupSoftware
-                { SoftwareId = s.SoftwareId, InstalledQuantity = s.InstalledQuantity }).ToList()
+            { SoftwareId = s.SoftwareId, InstalledQuantity = s.InstalledQuantity }).ToList()
         }).ToList();
 }

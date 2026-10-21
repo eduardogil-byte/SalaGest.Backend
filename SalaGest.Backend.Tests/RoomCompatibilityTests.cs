@@ -28,7 +28,10 @@ public class RoomCompatibilityTests
     [Fact]
     public void PhysicalCapacityAndPcQuantityAreDifferentChecks()
     {
-        var room = new Room { Active = true, Seats = 20,
+        var room = new Room
+        {
+            Active = true,
+            Seats = 20,
             ComputerGroups = new List<ComputerGroup>
             {
                 new ComputerGroup { Quantity = 30, RamGb = 16, Tier = HardwareTier.Alto }

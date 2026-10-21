@@ -61,9 +61,14 @@ public sealed class ScheduleGenerator(AppDbContext db)
                     if (collides) continue;
                     choice = new WeeklyClass
                     {
-                        Schedule = schedule, AssignmentId = assignment.Id, Assignment = assignment,
-                        ShiftId = option.Shift.Id, Shift = option.Shift,
-                        RoomId = option.Room.Id, Room = option.Room, Weekday = option.Weekday
+                        Schedule = schedule,
+                        AssignmentId = assignment.Id,
+                        Assignment = assignment,
+                        ShiftId = option.Shift.Id,
+                        Shift = option.Shift,
+                        RoomId = option.Room.Id,
+                        Room = option.Room,
+                        Weekday = option.Weekday
                     };
                     break;
                 }

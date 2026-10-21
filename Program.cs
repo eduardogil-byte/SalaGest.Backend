@@ -24,7 +24,7 @@ builder.Services.AddIdentityCore<AppUser>(options =>
         options.Password.RequireUppercase = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireDigit = true;
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
         options.Lockout.MaxFailedAccessAttempts = 5;
     })
     .AddRoles<IdentityRole>()
@@ -49,8 +49,11 @@ builder.Services.AddSwaggerGen(o =>
     o.SwaggerDoc("v1", new OpenApiInfo { Title = "SalaGest API", Version = "v1" });
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        In = ParameterLocation.Header, Name = "Authorization", Type = SecuritySchemeType.Http,
-        Scheme = "bearer", BearerFormat = "Identity Bearer Token",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "Identity Bearer Token",
         Description = "Cole apenas o accessToken retornado pelo endpoint de login"
     });
     o.AddSecurityRequirement(new OpenApiSecurityRequirement

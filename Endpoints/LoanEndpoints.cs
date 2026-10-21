@@ -24,11 +24,20 @@ public static partial class ApiEndpoints
                 .OrderByDescending(l => l.RequestedAtUtc).ToListAsync();
             return Results.Ok(loans.Select(l => new
             {
-                l.Id, l.RoomOccupationId, l.RoomOccupation.RoomId,
-                l.RoomOccupation.StartsAt, l.RoomOccupation.EndsAt,
-                OwnerTeacherId = l.RoomOccupation.TeacherId, l.BorrowerId,
-                l.BookingRequest.ClassGroupId, l.Reason, l.Status, l.OwnerDisposition,
-                l.ReplacementOccupationId, l.RequestedAtUtc, l.ApprovedAtUtc
+                l.Id,
+                l.RoomOccupationId,
+                l.RoomOccupation.RoomId,
+                l.RoomOccupation.StartsAt,
+                l.RoomOccupation.EndsAt,
+                OwnerTeacherId = l.RoomOccupation.TeacherId,
+                l.BorrowerId,
+                l.BookingRequest.ClassGroupId,
+                l.Reason,
+                l.Status,
+                l.OwnerDisposition,
+                l.ReplacementOccupationId,
+                l.RequestedAtUtc,
+                l.ApprovedAtUtc
             }));
         });
 
@@ -59,14 +68,20 @@ public static partial class ApiEndpoints
             {
                 var request = new BookingRequest
                 {
-                    TeacherId = input.BorrowerId, StartsAt = occ.StartsAt, EndsAt = occ.EndsAt,
-                    Students = 1, StudentsPerComputer = 1, Reason = input.Reason.Trim(),
+                    TeacherId = input.BorrowerId,
+                    StartsAt = occ.StartsAt,
+                    EndsAt = occ.EndsAt,
+                    Students = 1,
+                    StudentsPerComputer = 1,
+                    Reason = input.Reason.Trim(),
                     Status = BookingStatus.Pendente
                 };
                 var loan = new RoomLoan
                 {
-                    RoomOccupationId = occ.Id, BorrowerId = input.BorrowerId,
-                    BookingRequest = request, Reason = input.Reason.Trim(),
+                    RoomOccupationId = occ.Id,
+                    BorrowerId = input.BorrowerId,
+                    BookingRequest = request,
+                    Reason = input.Reason.Trim(),
                     Status = LoanStatus.AguardandoDestinatario
                 };
                 db.Loans.Add(loan);
@@ -74,7 +89,8 @@ public static partial class ApiEndpoints
             }
             db.Notifications.Add(new UserNotification
             {
-                UserId = input.BorrowerId, ActorId = ownerId,
+                UserId = input.BorrowerId,
+                ActorId = ownerId,
                 Message = $"Você recebeu {offers.Count} oferta(s) de empréstimo de sala."
             });
             await db.SaveChangesAsync();
@@ -122,7 +138,8 @@ public static partial class ApiEndpoints
             loan.Status = LoanStatus.AguardandoSituacaoTitular;
             db.Notifications.Add(new UserNotification
             {
-                UserId = occ.TeacherId!, ActorId = UserId(current),
+                UserId = occ.TeacherId!,
+                ActorId = UserId(current),
                 Message = "Empréstimo aceito. Defina EAD, dia não letivo ou outra sala para sua turma."
             });
             await db.SaveChangesAsync();
@@ -194,9 +211,14 @@ public static partial class ApiEndpoints
                 if (ownerConflict is not null) return Results.Conflict(new ApiError(ownerConflict));
                 var replacement = new RoomOccupation
                 {
-                    RoomId = room.Id, StartsAt = occ.StartsAt, EndsAt = occ.EndsAt,
-                    Kind = OccupationKind.Aula, TeacherId = owner, ClassGroupId = occ.ClassGroupId,
-                    Description = $"Realocação durante empréstimo #{loan.Id}", ChangedById = owner
+                    RoomId = room.Id,
+                    StartsAt = occ.StartsAt,
+                    EndsAt = occ.EndsAt,
+                    Kind = OccupationKind.Aula,
+                    TeacherId = owner,
+                    ClassGroupId = occ.ClassGroupId,
+                    Description = $"Realocação durante empréstimo #{loan.Id}",
+                    ChangedById = owner
                 };
                 db.Occupations.Add(replacement);
                 await db.SaveChangesAsync();
@@ -210,7 +232,8 @@ public static partial class ApiEndpoints
             booking.ApprovedRoomId = occ.RoomId;
             db.Notifications.Add(new UserNotification
             {
-                UserId = booking.TeacherId, ActorId = owner!,
+                UserId = booking.TeacherId,
+                ActorId = owner!,
                 Message = $"Empréstimo #{loan.Id} confirmado para {occ.StartsAt:dd/MM/yyyy} ({occ.StartsAt:HH:mm}–{occ.EndsAt:HH:mm})."
             });
             await db.SaveChangesAsync();

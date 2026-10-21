@@ -33,8 +33,13 @@ public static class DbSeed
             var newlyCreated = admin is null;
             if (admin is null)
             {
-                admin = new AppUser { Email = adminEmail, UserName = adminEmail,
-                    DisplayName = "Administrador", EmailConfirmed = true };
+                admin = new AppUser
+                {
+                    Email = adminEmail,
+                    UserName = adminEmail,
+                    DisplayName = "Administrador",
+                    EmailConfirmed = true
+                };
                 var result = await users.CreateAsync(admin, adminPassword);
                 if (!result.Succeeded)
                     throw new InvalidOperationException("Não foi possível criar o administrador: " +
