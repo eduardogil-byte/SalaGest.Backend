@@ -13,6 +13,7 @@ public static partial class ApiEndpoints
     public static void MapSalaGestEndpoints(this IEndpointRouteBuilder app)
     {
         MapAccounts(app);
+        MapPasswords(app);
         MapCatalog(app);
         MapSchedules(app);
         MapBookings(app);
